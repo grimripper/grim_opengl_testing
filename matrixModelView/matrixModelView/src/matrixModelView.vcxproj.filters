@@ -106,11 +106,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="matrixModelView.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="songho_alpha.bmp">
       <Filter>Resource Files</Filter>
     </None>
