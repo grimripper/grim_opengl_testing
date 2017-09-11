@@ -1,21 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Extrinsic_Experiments.h" />
-    <ClInclude Include="GL_Drawing.h" />
-    <ClInclude Include="GL_MultiViewPort.h" />
-    <ClInclude Include="GL_ViewMatrix.h" />
     <ClInclude Include="RotationAroundAxes.h" />
     <ClInclude Include="ProjectionUsingEigen.h" />
-    <ClInclude Include="Intrinsic_Experiments.h" />
+    <ClInclude Include="Test_Extrinsic_Experiments.h" />
+    <ClInclude Include="Test_Extrinsincs_Intrinsics_Experiments.h" />
+    <ClInclude Include="Test_Intrinsic_Experiments.h" />
+    <ClInclude Include="Test_Basic_GL_Drawing.h" />
+    <ClInclude Include="Test_GL_MultiViewPort.h" />
+    <ClInclude Include="Test_GL_ViewMatrix.h" />
+    <ClInclude Include="Test_GL_ExtrinsincsIntrinsics.h" />
+    <ClInclude Include="Test_RotationAroundAxes.h" />
+    <ClInclude Include="Test_Triangulation_UI.h" />
+    <ClInclude Include="Test_Triangulation_Standalone.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="GlutTut01.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
 </Project>

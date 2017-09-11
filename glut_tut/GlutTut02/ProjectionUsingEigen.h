@@ -47,8 +47,53 @@ Eigen::Matrix4f setGluPerspective(double fovY, double aspectRatio, double front,
     return setGlFrustum(-width, width, -height, height, front, back);
 }
 
-////---Tests---
-//int main_func(int argc, char* argv[])
-//{
-//    return 0;
-//}
+//TODO vaibhavt: A bit different from http://jamesgregson.blogspot.com/2011/11/matching-calibrated-cameras-with-opengl.html
+struct FakeCalibration_PinholeModel
+{
+    float fx;
+    float fy;
+    float s;
+    float x0;
+    float y0;
+
+    //assume TopLeft is (0,0)
+    //what is pixel convention???
+    float w;
+    float h;
+};
+
+Matrix4f GetProjectionMatrix(
+    const FakeCalibration_PinholeModel& calib,
+    float near_plane,
+    float far_plane,
+    Matrix4f& perspMatrix,
+    Matrix4f& orthoMatrix)
+{
+    perspMatrix = Matrix4f::Zero();
+    perspMatrix(0, 0) = calib.fx;
+    perspMatrix(0, 1) = calib.s;
+    perspMatrix(0, 2) = -calib.x0; //different here
+    perspMatrix(0, 3) = 0.0f;
+    perspMatrix(1, 0) = 0.0f;
+    perspMatrix(1, 1) = calib.fy;
+    perspMatrix(1, 2) = -calib.y0; //different here
+    perspMatrix(1, 3) = 0.0f;
+    perspMatrix(2, 0) = 0.0f;
+    perspMatrix(2, 1) = 0.0f;
+    perspMatrix(2, 2) = (near_plane + far_plane);
+    perspMatrix(2, 3) = near_plane*far_plane;
+    perspMatrix(3, 0) = 0.0f;
+    perspMatrix(3, 1) = 0.0f;
+    perspMatrix(3, 2) = -1.0f;
+    perspMatrix(3, 3) = 0.0f;
+
+    //Construct an orthographic matrix which maps from projected coordinates to normalized device coordinates
+    //in the range [-1,1]. OpenGL then maps coordinates in NDC to the current viewport. 
+
+    //TODO vaibhavt: Not sure about the order (should it be 0, calib.w, 0, calib.h - because this is how it is rendered in OpenGL
+    //different from kyle simek here. Doing 0->1
+    orthoMatrix = setOrthoFrustum(0, 1.0f, 0, 1.0f, near_plane, far_plane);
+
+    Matrix4f projMatrix = orthoMatrix * perspMatrix;
+    return projMatrix;
+}
