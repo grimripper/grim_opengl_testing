@@ -6,11 +6,13 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Test01.h" />
-    <ClInclude Include="Test02.h" />
-    <ClInclude Include="Util.h" />
-    <ClInclude Include="Test03.h" />
-    <ClInclude Include="Util2.h" />
+    <ClInclude Include="Extrinsic_Experiments.h" />
+    <ClInclude Include="GL_Drawing.h" />
+    <ClInclude Include="GL_MultiViewPort.h" />
+    <ClInclude Include="GL_ViewMatrix.h" />
+    <ClInclude Include="RotationAroundAxes.h" />
+    <ClInclude Include="ProjectionUsingEigen.h" />
+    <ClInclude Include="Intrinsic_Experiments.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />
