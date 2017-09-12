@@ -8,23 +8,31 @@
 
 using namespace std;
 
-int m_w = 640;
-int m_h = 480;
+int m_w = 642;
+int m_h = 240;
 
-int camera_chosen = 0;
+int last_clicked_viewport = -1;
+int last_clicked_x = -1;
+int last_clicked_y = -1;
+
+int camera_chosen = -1;
 
 float camera_pos[2][3] = { 0.0f };
-float camera_focal_length[2] = { 0.0f };
 
-static void Initialize();
 static void render();
 static void keyboard(unsigned char key, int x, int y);
 static void reshape(int, int);
+static void mouseFunc(int, int, int, int);
 
 int main_func(int argc, char* argv[])
 {
+    camera_pos[0][0] = 0.0f;
+    camera_pos[0][1] = 0.0f;
     camera_pos[0][2] = 5.0f;
-    camera_pos[1][2] = 5.0f;
+
+    camera_pos[1][0] = 0.0f;
+    camera_pos[1][1] = 0.0f;
+    camera_pos[1][2] = 3.0f;
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -32,12 +40,34 @@ int main_func(int argc, char* argv[])
     glutInitWindowSize(m_w, m_h);
     glutCreateWindow("OpenGL_Tut");
     glutKeyboardFunc(keyboard);
+    glutMouseFunc(mouseFunc);
     glutReshapeFunc(reshape);
-    Initialize();
     glutDisplayFunc(render);
 
     glutMainLoop();
     return 0;
+}
+
+void mouseFunc(int button, int state, int x, int y)
+{
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        if (x >= 322)
+        {
+            last_clicked_viewport = 1;
+            last_clicked_x = x - 322;
+            last_clicked_y = y;
+        }
+        else
+        {
+            last_clicked_viewport = 0;
+            last_clicked_x = x;
+            last_clicked_y = y;
+        }
+        cout << "Viewport = " << last_clicked_viewport << endl << 
+            "x = " << last_clicked_x << endl << 
+            "y = " << last_clicked_y << endl;
+    }
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -48,64 +78,48 @@ void keyboard(unsigned char key, int x, int y)
         exit(0);
     }
 
-    if (key == 't')
+    if (camera_chosen == -1)
     {
-        cout << "Camera toggled. Old camera: " << camera_chosen;
-        camera_chosen = (camera_chosen + 1) % 2;
-        cout << "New camera: " << camera_chosen << endl;
+        cout << "click on a camera" << endl;
+        return;
     }
 
     if (key == 'r')
     {
-        camera_pos[camera_chosen][0] -= 0.05;
+        camera_pos[camera_chosen][0] += 0.05f;
         glutPostRedisplay();
     }
     else if (key == 'l')
     {
-        camera_pos[camera_chosen][0] += 0.05;
+        camera_pos[camera_chosen][0] -= 0.05f;
         glutPostRedisplay();
     }
     else if (key == 'u')
     {
-        camera_pos[camera_chosen][1] += 0.05;
+        camera_pos[camera_chosen][1] += 0.05f;
         glutPostRedisplay();
     }
     else if (key == 'd')
     {
-        camera_pos[camera_chosen][1] -= 0.05;
+        camera_pos[camera_chosen][1] -= 0.05f;
         glutPostRedisplay();
     }
     else if (key == 'n')
     {
-        camera_pos[camera_chosen][2] -= 0.05;
+        camera_pos[camera_chosen][2] -= 0.05f;
         glutPostRedisplay();
     }
     else if (key == 'f')
     {
-        camera_pos[camera_chosen][2] += 0.05;
+        camera_pos[camera_chosen][2] += 0.05f;
         glutPostRedisplay();
-    }
-    else if (key == '+')
-    {
-        camera_focal_length[camera_chosen] += 0.01;
-    }
-    else if (key == '-')
-    {
-        camera_focal_length[camera_chosen] -= 0.01;
     }
 }
 
 void reshape(int w, int h)
 {
-    m_w = w;
-    m_h = h;
-    glViewport(0, 0, m_w, m_h);
-    cout << h << " " << w << endl;
-}
-
-void Initialize()
-{
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    //snap back to original window width and height
+    glutReshapeWindow(m_w, m_h);
 }
 
 void drawTriangleVertices()
@@ -142,15 +156,16 @@ void printModelViewMatrix()
 
 void render()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GLfloat mvMtx[16] = { 0.0f };
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     {
-        glViewport(0, m_h / 2.0, m_w / 2.0, m_h / 2.0);
+        glViewport(0, 0, 320, m_h);
         glMatrixMode(GL_MODELVIEW);
 
         Vector3 x_axis, y_axis, z_axis;
-        Angles_To_Axes(Vector3(0, 0, 0), x_axis, y_axis, z_axis);
+        Angles_To_Axes(Vector3(0, 30, 0), x_axis, y_axis, z_axis);
 
         Matrix4f camToWorldMatrix = Matrix4f::Identity();
         camToWorldMatrix.block<3, 3>(0, 0) = GetRotationMatrix(x_axis, y_axis, z_axis);
@@ -163,72 +178,120 @@ void render()
 
         glLoadMatrixf(worldToCamMatrix.data());  // already in column-major order
 
-        //glLoadIdentity();
-        ////Moves the camera back by 5 units (meters) in Z
-        ////glTranslatef(-camera_pos[0][0], -camera_pos[0][1], -camera_pos[0][2]);
-
         if (camera_chosen == 0)
         {
             printModelViewMatrix();
         }
 
-        //NOTE vaibhavt: Works! -> Produces same as above
-        //gluLookAt(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(-3.0, 3.0, -3.0, 3.0, 0.0, 10.0);
 
-        //TODO vaibhavt: Works! -> Produces same as above
-        //Eigen::Matrix4f glProj = setGlFrustum(-3.0, 3.0, -3.0, 3.0, 0.0, 10.0);
-        //glLoadMatrixf(glProj.data());
+        //Create a projection matrix from Calibration Model
+        FakeCalibration_PinholeModel pinHoleModel;
+        pinHoleModel.fx = 500.0f;
+        pinHoleModel.fy = 500.0f;
+        pinHoleModel.s = 0.0f;
+        pinHoleModel.w = 1000.0f;
+        pinHoleModel.h = 1000.0f;
+        pinHoleModel.x0 = 500.0f;
+        pinHoleModel.y0 = 500.0f;
+        Matrix4f glProj, perspIntrinsicMatrix, orthoNdcMatrix;
+
+        glProj = GetProjectionMatrix(pinHoleModel, 2.0f, 6.0f, perspIntrinsicMatrix, orthoNdcMatrix);
+
+        //Equivalent to the following:
+        //glProj = setGlFrustum(-2.0f, 2.0f, -2.0f, 2.0f, 2.0, 6.0);
+        glLoadMatrixf(glProj.data());
 
         if (camera_chosen == 0)
         {
             printProjectionMatrix();
-            Eigen::Matrix4f eigenProj = setOrthoFrustum(-3.0, 3.0, -3.0, 3.0, 0.0, 10.0);
-            cout << eigenProj << endl;
+
+            Vector4f world_location(-0.5f, 0.0f, 0.0f, 1.0f);
+            Vector4f cam_location = worldToCamMatrix * world_location;
+            cout << "Location in cam = " << cam_location / cam_location(3) << endl;
+            Vector4f img_location = perspIntrinsicMatrix * cam_location;
+            cout << "Location in img = " << img_location / img_location(3) << endl;
         }
         glLineWidth(3.0f);
         glBegin(GL_TRIANGLES);
-        drawTriangleVertices();
+            drawTriangleVertices();
         glEnd();
     }
 
     {
-        glViewport(0, 0, m_w / 2.0, m_h / 2.0);
+        //Viewport Separator - nicer solution? how do I make this 1 pixel thick?
+        glViewport(320, 0, 2, m_h);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
+        glTranslatef(0.0f, 0.0f, -5.0f);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-0.5, 0.5, -0.5, 0.5, 1.0, 10.0);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glBegin(GL_QUADS);
+            glVertex3f(-0.5f, -0.5f, 0.0f);
+            glVertex3f(0.5f, -0.5f, 0.0f);
+            glVertex3f(0.5f, 0.5f, 0.0f);
+            glVertex3f(-0.5f, 0.5f, 0.0f);
+        glEnd();
+    }
 
-        //Moves the camera back by 5 units (meters) in Z
-        glTranslatef(-camera_pos[1][0], -camera_pos[1][1], -camera_pos[1][2]);
+    {
+        glViewport(322, 0, 320, m_h);
+        glMatrixMode(GL_MODELVIEW);
+
+        Vector3 x_axis, y_axis, z_axis;
+        Angles_To_Axes(Vector3(0, 0, 0), x_axis, y_axis, z_axis);
+
+        Matrix4f camToWorldMatrix = Matrix4f::Identity();
+        camToWorldMatrix.block<3, 3>(0, 0) = GetRotationMatrix(x_axis, y_axis, z_axis);
+
+        Vector3f camTranslation;
+        camTranslation << camera_pos[1][0], camera_pos[1][1], camera_pos[1][2];
+
+        camToWorldMatrix.block<3, 1>(0, 3) = camTranslation;
+        Matrix4f worldToCamMatrix = camToWorldMatrix.inverse();
+
+        glLoadMatrixf(worldToCamMatrix.data());  // already in column-major order
 
         if (camera_chosen == 1)
         {
             printModelViewMatrix();
         }
-        //NOTE vaibhavt: Works! -> Produces same as above
-        //gluLookAt(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
         glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        //Near = 0
-        //Far = 3
-        glFrustum(-3.0, 3.0, -3.0, 3.0, 2.0, 6.0);
 
-        //TODO vaibhavt: Works! -> Produces same as above
-        //Eigen::Matrix4f glProj = setGlFrustum(-3.0, 3.0, -3.0, 3.0, 2.0, 6.0);
-        //glLoadMatrixf(glProj.data());
+        //Create a projection matrix from Calibration Model
+        FakeCalibration_PinholeModel pinHoleModel;
+        pinHoleModel.fx = 500.0f;
+        pinHoleModel.fy = 500.0f;
+        pinHoleModel.s = 0.0f;
+        pinHoleModel.w = 1000.0f;
+        pinHoleModel.h = 1000.0f;
+        pinHoleModel.x0 = 500.0f;
+        pinHoleModel.y0 = 500.0f;
+        Matrix4f glProj, perspIntrinsicMatrix, orthoNdcMatrix;
 
-        //glOrtho(-3.0, 3.0, -3.0, 3.0, 0.0, 10.0);
+        glProj = GetProjectionMatrix(pinHoleModel, 2.0f, 6.0f, perspIntrinsicMatrix, orthoNdcMatrix);
+
+        //Equivalent to the following:
+        glProj = setGlFrustum(-2.0f, 2.0f, -2.0f, 2.0f, 2.0, 6.0);
+        glLoadMatrixf(glProj.data());
+
         if (camera_chosen == 1)
         {
             printProjectionMatrix();
-            Eigen::Matrix4f eigenProj = setGlFrustum(-3.0, 3.0, -3.0, 3.0, 2.0, 6.0);
-            cout << eigenProj << endl;
+
+            Vector4f world_location(-0.5f, 0.0f, 0.0f, 1.0f);
+            Vector4f cam_location = worldToCamMatrix * world_location;
+            cout << "Location in cam = " << cam_location / cam_location(3) << endl;
+            Vector4f img_location = perspIntrinsicMatrix * cam_location;
+            cout << "Location in img = " << img_location / img_location(3) << endl;
         }
 
         glLineWidth(3.0f);
         glBegin(GL_TRIANGLES);
-        drawTriangleVertices();
+            drawTriangleVertices();
         glEnd();
     }
 
