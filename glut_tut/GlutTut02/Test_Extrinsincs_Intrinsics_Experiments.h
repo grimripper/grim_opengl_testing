@@ -41,13 +41,13 @@ int main_func(int argc, char* argv[])
 
     //Create a projection matrix from Calibration Model
     FakeCalibration_PinholeModel pinHoleModel;
-    pinHoleModel.fx = 1.0f;
-    pinHoleModel.fy = 1.0f;
+    pinHoleModel.fx = 500.0f;
+    pinHoleModel.fy = 500.0f;
     pinHoleModel.s = 0.0f;
-    pinHoleModel.w = 1.0f;
-    pinHoleModel.h = 1.0f;
-    pinHoleModel.x0 = 0.5f;
-    pinHoleModel.y0 = 0.5f;
+    pinHoleModel.w = 1000.0f;
+    pinHoleModel.h = 1000.0f;
+    pinHoleModel.x0 = 500.0f;
+    pinHoleModel.y0 = 500.0f;
     Matrix4f projMatrix_to_ndc, perspIntrinsicMatrix, orthoNdcMatrix;
 
     cout << "Intrinsics + Extrinsics" << endl;
@@ -55,9 +55,23 @@ int main_func(int argc, char* argv[])
 
     projMatrix_to_ndc = GetProjectionMatrix(pinHoleModel, 1.0f, 10.0f, perspIntrinsicMatrix, orthoNdcMatrix);
 
-    cout << "Test1: World origin (0,0,0) in ndc: " << endl << projMatrix_to_ndc * worldToCamMatrix * Vector4f(0, 0, 0, 1) << endl;
-    cout << "Test2: 1 meter in front of origin (0,0,1) in ndc: " << endl << projMatrix_to_ndc * worldToCamMatrix * Vector4f(0, 0, 1, 1) << endl;
-    cout << "Test3: 1 meter to the right of origin (1,0,0) in ndc: " << endl << projMatrix_to_ndc * worldToCamMatrix * Vector4f(1, 0, 0, 1) << endl;
+    Vector4f vec;
+    vec = worldToCamMatrix * Vector4f(0, 0, 0, 1);
+    cout << "Test1: World origin (0,0,0) in camera: " << endl << vec << endl;
+    cout << perspIntrinsicMatrix << endl;
+    vec = perspIntrinsicMatrix * vec;
+    cout << "Test1: World origin (0,0,0) after projection: " << endl << vec << endl;
+    vec = orthoNdcMatrix * vec;
+    cout << "Test1: Point (0,0,0) after ndc: " << endl << vec / vec(3) << endl;
+
+    vec = projMatrix_to_ndc * worldToCamMatrix * Vector4f(0, 0, 5.99, 1);
+    cout << "Test2: 5.99 meter in front of world origin (0,0,5.99) in ndc: " << endl <<  vec / vec(3) << endl;
+    vec = projMatrix_to_ndc * worldToCamMatrix * Vector4f(1, 0, 0, 1);
+    cout << "Test3: 1 meter to the right of world origin (1,0,0) in ndc: " << endl <<  vec / vec(3) << endl;
+    vec = projMatrix_to_ndc * worldToCamMatrix * Vector4f(0.5, 0, 6, 1);
+    cout << "Test3: 0.5 meter to the right of near plane (0.5,0,6) in ndc: " << endl << vec / vec(3) << endl;
+    vec = projMatrix_to_ndc * worldToCamMatrix * Vector4f(0, 0.5, 6, 1);
+    cout << "Test3: 0.5 meter to the top of near plane (0,0.5,6) in ndc: " << endl << vec / vec(3) << endl;
 
     //Final mapping to image coordinates
     //-1,-1 should map to 0,0

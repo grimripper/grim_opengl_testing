@@ -92,7 +92,7 @@ Matrix4f GetProjectionMatrix(
 
     //TODO vaibhavt: Not sure about the order (should it be 0, calib.w, 0, calib.h - because this is how it is rendered in OpenGL
     //different from kyle simek here. Doing 0->1
-    orthoMatrix = setOrthoFrustum(0, 1.0f, 0, 1.0f, near_plane, far_plane);
+    orthoMatrix = setOrthoFrustum(0, calib.w, 0, calib.h, near_plane, far_plane);
 
     Matrix4f projMatrix = orthoMatrix * perspMatrix;
     return projMatrix;
