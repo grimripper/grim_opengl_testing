@@ -36,7 +36,7 @@ Eigen::Matrix4f setOrthoFrustum(float l, float r, float b, float t, float n, flo
     return projectionMatrix;
 }
 
-Eigen::Matrix4f setGluPerspective(double fovY, double aspectRatio, double front, double back)
+Eigen::Matrix4f setGluPerspective(float fovY, float aspectRatio, float front, float back)
 {
     const double DEG2RAD = 3.14159265 / 180;
 
