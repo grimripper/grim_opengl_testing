@@ -9,16 +9,18 @@
 using namespace std;
 using namespace Eigen;
 
-Matrix4f g_world_to_cam_matrix[2];
-Matrix4f g_persp_intrinsic_matrix[2];
+const int NUM_CAMERAS = 4;
 
-GLfloat g_modelView0[16] = { 0.0f };
-GLfloat g_modelView1[16] = { 0.0f };
-GLfloat g_projection0[16] = { 0.0f };
-GLfloat g_projection1[16] = { 0.0f };
+const int WIDTH_VIEWPORT = 320;
+const int HEIGHT_VIEWPORT = 240;
 
-int g_w = 642;
-int g_h = 240;
+const int WIDTH_WINDOW = WIDTH_VIEWPORT*NUM_CAMERAS + (NUM_CAMERAS - 1) * 2;
+
+Matrix4f g_world_to_cam_matrix[NUM_CAMERAS];
+Matrix4f g_persp_intrinsic_matrix[NUM_CAMERAS];
+
+GLfloat g_modelView[NUM_CAMERAS][16] = { 0.0f };
+GLfloat g_projection[NUM_CAMERAS][16] = { 0.0f };
 
 int g_last_clicked_viewport = -1;
 int g_last_clicked_x = -1;
@@ -26,8 +28,8 @@ int g_last_clicked_y = -1;
 
 int g_camera_chosen = -1;
 
-float g_camera_rot_degrees[2][3] = { 0.0f };
-float g_camera_pos[2][3] = { 0.0f };
+float g_camera_rot_degrees[NUM_CAMERAS][3] = { 0.0f };
+float g_camera_pos[NUM_CAMERAS][3] = { 0.0f };
 
 static void render();
 static void keyboard(unsigned char key, int x, int y);
@@ -41,21 +43,37 @@ int main_func(int argc, char* argv[])
     g_camera_rot_degrees[0][2] = 0.0f;
 
     g_camera_rot_degrees[1][0] = 0.0f;
-    g_camera_rot_degrees[1][1] = 0.0f;
+    g_camera_rot_degrees[1][1] = -15.0f;
     g_camera_rot_degrees[1][2] = 0.0f;
+
+    g_camera_rot_degrees[2][0] = 15.0f;
+    g_camera_rot_degrees[2][1] = 0.0f;
+    g_camera_rot_degrees[2][2] = 0.0f;
+
+    g_camera_rot_degrees[3][0] = 0.0f;
+    g_camera_rot_degrees[3][1] = 0.0f;
+    g_camera_rot_degrees[3][2] = -15.0f;
 
     g_camera_pos[0][0] = 0.0f;
     g_camera_pos[0][1] = 0.0f;
     g_camera_pos[0][2] = 5.0f;
 
-    g_camera_pos[1][0] = 0.0f;
+    g_camera_pos[1][0] = 1.0f;
     g_camera_pos[1][1] = 0.0f;
     g_camera_pos[1][2] = 3.0f;
+
+    g_camera_pos[2][0] = 0.0f;
+    g_camera_pos[2][1] = 0.0f;
+    g_camera_pos[2][2] = 4.0f;
+
+    g_camera_pos[3][0] = 0.0f;
+    g_camera_pos[3][1] = 3.0f;
+    g_camera_pos[3][2] = 3.5f;
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(g_w, g_h);
+    glutInitWindowSize(WIDTH_WINDOW, HEIGHT_VIEWPORT);
     glutCreateWindow("OpenGL_Tut");
     glutKeyboardFunc(keyboard);
     glutMouseFunc(mouseFunc);
@@ -70,18 +88,31 @@ void mouseFunc(int button, int state, int x, int y)
 {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
-        if (x >= 322)
+        if (x >= 966)
+        {
+            g_last_clicked_viewport = 3;
+            g_last_clicked_x = x - 966;
+            g_last_clicked_y = (240 - y);
+        }
+        else if (x >= 644 && x < 964)
+        {
+            g_last_clicked_viewport = 2;
+            g_last_clicked_x = x - 644;
+            g_last_clicked_y = (240 - y);
+        }
+        else if (x >= 322 && x < 642)
         {
             g_last_clicked_viewport = 1;
             g_last_clicked_x = x - 322;
             g_last_clicked_y = (240 - y);
         }
-        else
+        else if (x < 320)
         {
             g_last_clicked_viewport = 0;
             g_last_clicked_x = x;
             g_last_clicked_y = (240 - y);
         }
+
         g_camera_chosen = g_last_clicked_viewport;
         cout << "Viewport = " << g_last_clicked_viewport << endl << 
             "x = " << g_last_clicked_x << endl << 
@@ -138,7 +169,7 @@ void keyboard(unsigned char key, int x, int y)
 void reshape(int w, int h)
 {
     //snap back to original window width and height
-    glutReshapeWindow(g_w, g_h);
+    glutReshapeWindow(WIDTH_WINDOW, HEIGHT_VIEWPORT);
 }
 
 void drawTriangleVertices()
@@ -155,11 +186,19 @@ void SetupViewportandModelViewMatrix(int camera)
 {
     if (camera == 0)
     {
-        glViewport(0, 0, 320, g_h);
+        glViewport(0, 0, 320, HEIGHT_VIEWPORT);
     }
     else if (camera == 1)
     {
-        glViewport(322, 0, 320, g_h);
+        glViewport(322, 0, 320, HEIGHT_VIEWPORT);
+    }
+    else if (camera == 2)
+    {
+        glViewport(644, 0, 320, HEIGHT_VIEWPORT);
+    }
+    else if (camera == 3)
+    {
+        glViewport(966, 0, 320, HEIGHT_VIEWPORT);
     }
     else
     {
@@ -182,7 +221,7 @@ void SetupViewportandModelViewMatrix(int camera)
 
     glLoadMatrixf(g_world_to_cam_matrix[camera].data());  // already in column-major order
 
-    GLfloat* modelView = (camera == 0) ? g_modelView0 : g_modelView1;
+    GLfloat* modelView = g_modelView[g_camera_chosen];
     glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
 }
 
@@ -207,14 +246,12 @@ void SetupProjectionMatrix(int camera)
     //glProj = setGlFrustum(-2.0f, 2.0f, -2.0f, 2.0f, 2.0, 6.0);
     glLoadMatrixf(glProj.data());
 
-    GLfloat* projection = (camera == 0) ? g_projection0 : g_projection1;
+    GLfloat* projection = g_projection[g_camera_chosen];
     glGetFloatv(GL_PROJECTION_MATRIX, projection);
 }
 
 void drawEpipolarLineInOtherViewports()
 {
-    int otherViewPort = (g_camera_chosen + 1) % 2;
-
     Vector3f clicked_uv((float)g_last_clicked_x, (float)g_last_clicked_y, 1);
 
     Matrix4f perspIntrinsic = g_persp_intrinsic_matrix[g_camera_chosen];
@@ -230,37 +267,40 @@ void drawEpipolarLineInOtherViewports()
 
     Vector3f projectedClickedPoint = Vector3f((1000.0f / 320.0f)*clicked_uv(0), (1000.0f / 240.0f)*clicked_uv(1), 1.0f);
     cout << "Projected point = " << projectedClickedPoint << endl;
-    Vector3f unprojectedRay = perspIntrinsic_33.inverse() * projectedClickedPoint;
-    cout << "Unprojected ray = " << unprojectedRay << endl;
+    Vector3f unprojectedPoint = perspIntrinsic_33.inverse() * projectedClickedPoint;
+    unprojectedPoint = unprojectedPoint / unprojectedPoint(2);
+    cout << "Unprojected point = " << unprojectedPoint << endl;
 
     Matrix4f modelViewMatrix = g_world_to_cam_matrix[g_camera_chosen];
 
-    SetupViewportandModelViewMatrix(otherViewPort);
-    SetupProjectionMatrix(otherViewPort);
-    glPointSize(1.0f);
-    glBegin(GL_POINTS);
-    for (int multiplier = -100; multiplier < 100; ++multiplier)
+    for (int otherViewport = 0; otherViewport < NUM_CAMERAS; ++otherViewport)
     {
-        Vector3f point_on_ray = unprojectedRay * multiplier;
-        if (point_on_ray(2) < 0)
+        if (otherViewport == g_camera_chosen)
         {
-            glColor3f(1.0f, 0.0f, 0.0f);
+            continue;
         }
-        else
+
+        SetupViewportandModelViewMatrix(otherViewport);
+        SetupProjectionMatrix(otherViewport);
+        glPointSize(1.0f);
+        glBegin(GL_POINTS);
+        for (int multiplier = -100; multiplier < 100; ++multiplier)
         {
-            glColor3f(0.0f, 0.0f, 1.0f);
+            Vector3f point_on_ray = unprojectedPoint * multiplier * 0.1;
+            glColor3f(1.0f, 1.0f, 1.0f);
+            Vector4f point_on_ray_world, temp;
+            temp(0) = point_on_ray(0);
+            temp(1) = point_on_ray(1);
+            temp(2) = point_on_ray(2);
+            temp(3) = 1.0f;
+
+            point_on_ray_world = modelViewMatrix.inverse() * temp;
+            point_on_ray_world = point_on_ray_world / point_on_ray_world(3);
+
+            glVertex3f(point_on_ray_world(0), point_on_ray_world(1), point_on_ray_world(2));
         }
-        Vector4f point_on_ray_world, temp;
-        temp(0) = point_on_ray(0);
-        temp(1) = point_on_ray(1);
-        temp(2) = point_on_ray(2);
-        temp(3) = 1.0f;
-
-        point_on_ray_world = modelViewMatrix.inverse() * temp;
-
-        glVertex3f(point_on_ray_world(0)/point_on_ray_world(3), point_on_ray_world(1)/ point_on_ray_world(3), point_on_ray_world(2)/ point_on_ray_world(3));
+        glEnd();
     }
-    glEnd();
 }
 
 void printGLMatrix(GLfloat mvMtx[16])
@@ -272,44 +312,60 @@ void printGLMatrix(GLfloat mvMtx[16])
         mvMtx[3] << "\t" << mvMtx[7] << "\t" << mvMtx[11] << "\t" << mvMtx[15] << endl;
 }
 
+//Viewport Separator - nicer solution? how do I make this 1 pixel thick?
+void drawSeparator(int first_viewport, int second_viewport)
+{
+    if (first_viewport == 0)
+    {
+        glViewport(320, 0, 2, HEIGHT_VIEWPORT);
+    }
+    else if (first_viewport == 1)
+    {
+        glViewport(642, 0, 2, HEIGHT_VIEWPORT);
+    }
+    else if (first_viewport == 2)
+    {
+        glViewport(964, 0, 2, HEIGHT_VIEWPORT);
+    }
+    else
+    {
+        exit(1);
+    }
+
+    glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glTranslatef(0.0f, 0.0f, -5.0f);
+    glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-0.5, 0.5, -0.5, 0.5, 1.0, 10.0);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_QUADS);
+        glVertex3f(-0.5f, -0.5f, 0.0f);
+        glVertex3f(0.5f, -0.5f, 0.0f);
+        glVertex3f(0.5f, 0.5f, 0.0f);
+        glVertex3f(-0.5f, 0.5f, 0.0f);
+    glEnd();
+}
+
 void render()
 {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    SetupViewportandModelViewMatrix(0);
+    SetupProjectionMatrix(0);
+
+    glLineWidth(3.0f);
+    glBegin(GL_TRIANGLES);
+    drawTriangleVertices();
+    glEnd();
+
+    for (int viewport = 1; viewport < NUM_CAMERAS; ++viewport)
     {
-        SetupViewportandModelViewMatrix(0);
+        drawSeparator(viewport - 1, viewport);
 
-        SetupProjectionMatrix(0);
-
-        glLineWidth(3.0f);
-        glBegin(GL_TRIANGLES);
-            drawTriangleVertices();
-        glEnd();
-    }
-
-    {
-        //Viewport Separator - nicer solution? how do I make this 1 pixel thick?
-        glViewport(320, 0, 2, g_h);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glTranslatef(0.0f, 0.0f, -5.0f);
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(-0.5, 0.5, -0.5, 0.5, 1.0, 10.0);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glBegin(GL_QUADS);
-            glVertex3f(-0.5f, -0.5f, 0.0f);
-            glVertex3f(0.5f, -0.5f, 0.0f);
-            glVertex3f(0.5f, 0.5f, 0.0f);
-            glVertex3f(-0.5f, 0.5f, 0.0f);
-        glEnd();
-    }
-
-    {
-        SetupViewportandModelViewMatrix(1);
-
-        SetupProjectionMatrix(1);
+        SetupViewportandModelViewMatrix(viewport);
+        SetupProjectionMatrix(viewport);
 
         glLineWidth(3.0f);
         glBegin(GL_TRIANGLES);
@@ -320,9 +376,9 @@ void render()
     if (g_camera_chosen != -1)  //if something was clicked
     {
         cout << "ModelView" << endl;
-        printGLMatrix(g_camera_chosen == 0 ? g_modelView0 : g_modelView1);
+        printGLMatrix(g_modelView[g_camera_chosen]);
         cout << "Projection" << endl;
-        printGLMatrix(g_camera_chosen == 0 ? g_projection0 : g_projection1);
+        printGLMatrix(g_projection[g_camera_chosen]);
 
         const Matrix4f& worldToCamMatrix = g_world_to_cam_matrix[g_camera_chosen];
         const Matrix4f& perspIntrinsicMatrix = g_persp_intrinsic_matrix[g_camera_chosen];

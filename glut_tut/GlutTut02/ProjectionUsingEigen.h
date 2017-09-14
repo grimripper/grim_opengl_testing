@@ -1,4 +1,5 @@
 #pragma once
+
 #include <GL\glut.h>
 #include <Eigen/Dense>
 #include <math.h>
@@ -7,7 +8,7 @@
 using namespace std;
 using namespace Eigen;
 
-//TODO vaibhavt: http://www.songho.ca/opengl/gl_projectionmatrix.html
+//FROM: http://www.songho.ca/opengl/gl_projectionmatrix.html
 Eigen::Matrix4f setGlFrustum(float l, float r, float b, float t, float n, float f)
 {
     Eigen::Matrix4f projectionMatrix = Matrix4f::Zero();
@@ -47,7 +48,7 @@ Eigen::Matrix4f setGluPerspective(float fovY, float aspectRatio, float front, fl
     return setGlFrustum(-width, width, -height, height, front, back);
 }
 
-//TODO vaibhavt: A bit different from http://jamesgregson.blogspot.com/2011/11/matching-calibrated-cameras-with-opengl.html
+//NOTE: A bit different from http://jamesgregson.blogspot.com/2011/11/matching-calibrated-cameras-with-opengl.html
 struct FakeCalibration_PinholeModel
 {
     float fx;
@@ -90,8 +91,7 @@ Matrix4f GetProjectionMatrix(
     //Construct an orthographic matrix which maps from projected coordinates to normalized device coordinates
     //in the range [-1,1]. OpenGL then maps coordinates in NDC to the current viewport. 
 
-    //TODO vaibhavt: Not sure about the order (should it be 0, calib.w, 0, calib.h - because this is how it is rendered in OpenGL
-    //different from kyle simek here. Doing 0->1
+    //NOTE Different from kyle simek here. Doing 0->1
     orthoMatrix = setOrthoFrustum(0, calib.w, 0, calib.h, near_plane, far_plane);
 
     Matrix4f projMatrix = orthoMatrix * perspMatrix;

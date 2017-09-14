@@ -170,8 +170,9 @@
     <ClInclude Include="RotationAroundAxes.h" />
     <ClInclude Include="ProjectionUsingEigen.h" />
     <ClInclude Include="Test_RotationAroundAxes.h" />
-    <ClInclude Include="Test_Triangulation_UI.h" />
+    <ClInclude Include="Test_GL_Triangulation.h" />
     <ClInclude Include="Test_Triangulation_Standalone.h" />
+    <ClInclude Include="Triangulation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

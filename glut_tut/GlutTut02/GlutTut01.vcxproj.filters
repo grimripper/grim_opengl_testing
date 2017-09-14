@@ -13,8 +13,9 @@
     <ClInclude Include="Test_GL_ViewMatrix.h" />
     <ClInclude Include="Test_GL_ExtrinsincsIntrinsics.h" />
     <ClInclude Include="Test_RotationAroundAxes.h" />
-    <ClInclude Include="Test_Triangulation_UI.h" />
     <ClInclude Include="Test_Triangulation_Standalone.h" />
+    <ClInclude Include="Test_GL_Triangulation.h" />
+    <ClInclude Include="Triangulation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />
