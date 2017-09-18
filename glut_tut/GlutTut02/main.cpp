@@ -1,7 +1,7 @@
 // GlutTut01.cpp : Defines the entry point for the console application.
 //
 
-#include "Test_Triangulation_Standalone.h"
+#include "Test_GL_Triangulation.h"
 #include <iostream>
 
 using namespace std;

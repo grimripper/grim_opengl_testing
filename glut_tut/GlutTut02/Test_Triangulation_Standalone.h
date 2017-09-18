@@ -3,6 +3,8 @@
 #include <Eigen/Dense>
 #include <math.h>
 #include <iostream>
+#include <chrono>
+#include <random>
 #include "ProjectionUsingEigen.h"
 #include "RotationAroundAxes.h"
 #include "Triangulation.h"
@@ -21,6 +23,10 @@ GLfloat g_projection[NUM_CAMERAS][16] = { 0.0f };
 
 float g_camera_rot_degrees[NUM_CAMERAS][3] = { 0.0f };
 float g_camera_pos[NUM_CAMERAS][3] = { 0.0f };
+
+const float g_noise_pixels_sigma = 1;
+std::normal_distribution<float> g_pixel_noise_distribution;
+std::default_random_engine g_generator;
 
 void SetupExtrinsics(int camera)
 {
@@ -60,6 +66,10 @@ void SetupIntrinsics(int camera)
 //---Tests---
 int main_func(int argc, char* argv[])
 {
+    long long seed = std::chrono::system_clock::now().time_since_epoch().count();
+    g_generator = std::default_random_engine((unsigned int)seed);
+
+    g_pixel_noise_distribution = std::normal_distribution<float>(0.0f, g_noise_pixels_sigma);
     g_camera_rot_degrees[0][0] = 0.0f;
     g_camera_rot_degrees[0][1] = 30.0f;
     g_camera_rot_degrees[0][2] = 0.0f;
@@ -122,8 +132,9 @@ int main_func(int argc, char* argv[])
             image_points[camera][i] = Vector2f(image_point(0) / image_point(2), image_point(1) / image_point(2));
             cout << "camera: " << camera << endl << image_points[camera][i] << endl;
 
-            data[camera].Extrinsics = g_world_to_cam_matrix[camera].data();
-            data[camera].Intrinsics = g_persp_intrinsic_33_matrix[camera].data();
+            image_points[camera][i] += Vector2f(g_pixel_noise_distribution(g_generator), g_pixel_noise_distribution(g_generator));
+            cout << "camera (noise added): " << camera << endl << image_points[camera][i] << endl;
+
             data[camera].use_for_triangulation = true;
             data[camera].x = image_points[camera][i](0);
             data[camera].y = image_points[camera][i](1);

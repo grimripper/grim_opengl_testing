@@ -3,11 +3,13 @@
 #include <GL\glut.h>
 #include "ProjectionUsingEigen.h"
 #include "RotationAroundAxes.h"
+#include "Triangulation.h"
 #include <iostream>
 #include <sstream>
 
 using namespace std;
 using namespace Eigen;
+
 
 const int NUM_CAMERAS = 4;
 
@@ -18,9 +20,12 @@ const int WIDTH_WINDOW = WIDTH_VIEWPORT*NUM_CAMERAS + (NUM_CAMERAS - 1) * 2;
 
 Matrix4f g_world_to_cam_matrix[NUM_CAMERAS];
 Matrix4f g_persp_intrinsic_matrix[NUM_CAMERAS];
+Matrix3f g_persp_intrinsic_matrix_33[NUM_CAMERAS];
 
 GLfloat g_modelView[NUM_CAMERAS][16] = { 0.0f };
 GLfloat g_projection[NUM_CAMERAS][16] = { 0.0f };
+
+int g_triangulation_clicked_xybool_location[NUM_CAMERAS][3] = { 0 };
 
 int g_last_clicked_viewport = -1;
 int g_last_clicked_x = -1;
@@ -88,6 +93,12 @@ void mouseFunc(int button, int state, int x, int y)
 {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
+        //Reset on left-click
+        g_triangulation_clicked_xybool_location[0][2] = 0;
+        g_triangulation_clicked_xybool_location[1][2] = 0;
+        g_triangulation_clicked_xybool_location[2][2] = 0;
+        g_triangulation_clicked_xybool_location[3][2] = 0;
+
         if (x >= 966)
         {
             g_last_clicked_viewport = 3;
@@ -117,6 +128,37 @@ void mouseFunc(int button, int state, int x, int y)
         cout << "Viewport = " << g_last_clicked_viewport << endl <<
             "x = " << g_last_clicked_x << endl <<
             "y = " << g_last_clicked_y << endl;
+    }
+    else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
+    {
+        //Reset on right-click
+        g_camera_chosen = -1;
+
+        //UGLY (copy of above code)
+        if (x >= 966)
+        {
+            g_triangulation_clicked_xybool_location[3][2] = 1;
+            g_triangulation_clicked_xybool_location[3][0] = x - 966;
+            g_triangulation_clicked_xybool_location[3][1] = (240 - y);
+        }
+        else if (x >= 644 && x < 964)
+        {
+            g_triangulation_clicked_xybool_location[2][2] = 1;
+            g_triangulation_clicked_xybool_location[2][0] = x - 644;
+            g_triangulation_clicked_xybool_location[2][1] = (240 - y);
+        }
+        else if (x >= 322 && x < 642)
+        {
+            g_triangulation_clicked_xybool_location[1][2] = 1;
+            g_triangulation_clicked_xybool_location[1][0] = x - 322;
+            g_triangulation_clicked_xybool_location[1][1] = (240 - y);
+        }
+        else if (x < 320)
+        {
+            g_triangulation_clicked_xybool_location[0][2] = 1;
+            g_triangulation_clicked_xybool_location[0][0] = x;
+            g_triangulation_clicked_xybool_location[0][1] = (240 - y);
+        }
     }
 }
 
@@ -182,7 +224,7 @@ void drawTriangleVertices()
     glVertex3f(0.0f, 1.0f, 0.0f);
 }
 
-void SetupViewportandModelViewMatrix(int camera)
+void SetupViewport(int camera)
 {
     if (camera == 0)
     {
@@ -204,7 +246,10 @@ void SetupViewportandModelViewMatrix(int camera)
     {
         exit(1);
     }
+}
 
+void SetupModelViewMatrix(int camera)
+{
     glMatrixMode(GL_MODELVIEW);
 
     Vector3 x_axis, y_axis, z_axis;
@@ -242,6 +287,11 @@ void SetupProjectionMatrix(int camera)
 
     glProj = GetProjectionMatrix(pinHoleModel, 2.0f, 6.0f, g_persp_intrinsic_matrix[camera], orthoNdcMatrix);
 
+    g_persp_intrinsic_matrix_33[camera] = Matrix3f::Zero();
+    g_persp_intrinsic_matrix_33[camera].block<2, 2>(0, 0) = g_persp_intrinsic_matrix[camera].block<2, 2>(0, 0);
+    g_persp_intrinsic_matrix_33[camera].block<2, 1>(0, 2) = g_persp_intrinsic_matrix[camera].block<2, 1>(0, 2);
+    g_persp_intrinsic_matrix_33[camera](2, 2) = -1;
+
     //Equivalent to the following:
     //glProj = setGlFrustum(-2.0f, 2.0f, -2.0f, 2.0f, 2.0, 6.0);
     glLoadMatrixf(glProj.data());
@@ -256,10 +306,8 @@ void drawEpipolarLineInOtherViewports()
 
     Matrix4f perspIntrinsic = g_persp_intrinsic_matrix[g_camera_chosen];
 
-    Matrix3f perspIntrinsic_33 = Matrix3f::Zero();
-    perspIntrinsic_33.block<2, 2>(0, 0) = perspIntrinsic.block<2, 2>(0, 0);
-    perspIntrinsic_33.block<2, 1>(0, 2) = perspIntrinsic.block<2, 1>(0, 2);
-    perspIntrinsic_33(2, 2) = -1;
+    Matrix3f perspIntrinsic_33 = g_persp_intrinsic_matrix_33[g_camera_chosen];
+
     cout << "Intrinsic--" << endl;
     cout << perspIntrinsic << endl;
     cout << perspIntrinsic_33 << endl;
@@ -280,7 +328,8 @@ void drawEpipolarLineInOtherViewports()
             continue;
         }
 
-        SetupViewportandModelViewMatrix(otherViewport);
+        SetupViewport(otherViewport);
+        SetupModelViewMatrix(otherViewport);
         SetupProjectionMatrix(otherViewport);
         glPointSize(1.0f);
         glBegin(GL_POINTS);
@@ -299,6 +348,37 @@ void drawEpipolarLineInOtherViewports()
 
             glVertex3f(point_on_ray_world(0), point_on_ray_world(1), point_on_ray_world(2));
         }
+        glEnd();
+    }
+}
+
+void drawReprojectedPointsInAllViewports(const Vector3f& world_location)
+{
+    for (int i = 0; i < NUM_CAMERAS; ++i)
+    {
+        Matrix4f modelViewMatrix = g_world_to_cam_matrix[i];
+        Matrix4f perspIntrinsic = g_persp_intrinsic_matrix[i];
+        Matrix3f perspIntrinsic_33 = g_persp_intrinsic_matrix_33[i];
+
+        cout << "Camera = " << i << endl;
+        cout << "----------" << endl;
+        Vector4f cam_location = modelViewMatrix * Vector4f(world_location(0), world_location(1), world_location(2), 1.0f);
+        cout << "Location in cam = " << cam_location / cam_location(3) << endl;
+        Vector4f img_location = perspIntrinsic * cam_location;
+        cout << "Location in img = " << img_location / img_location(3) << endl;
+        Vector2f viewport_location = Vector2f((img_location(0) / img_location(3))*320.0f / 1000.0f, (img_location(1) / img_location(3))*240.0f / 1000.0f);
+        cout << "Location in viewport should be = " << viewport_location << endl;
+
+        SetupViewport(i);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, 1.0, 0, 1.0, 0, 1);
+        glPointSize(10.0f);
+        glBegin(GL_POINTS);
+        glVertex2f(img_location(0) / (1000.0f*img_location(3)), img_location(1) / (1000.0f*img_location(3)));
         glEnd();
     }
 }
@@ -352,7 +432,8 @@ void render()
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    SetupViewportandModelViewMatrix(0);
+    SetupViewport(0);
+    SetupModelViewMatrix(0);
     SetupProjectionMatrix(0);
 
     glLineWidth(3.0f);
@@ -364,7 +445,8 @@ void render()
     {
         drawSeparator(viewport - 1, viewport);
 
-        SetupViewportandModelViewMatrix(viewport);
+        SetupViewport(viewport);
+        SetupModelViewMatrix(viewport);
         SetupProjectionMatrix(viewport);
 
         glLineWidth(3.0f);
@@ -375,22 +457,61 @@ void render()
 
     if (g_camera_chosen != -1)  //if something was clicked
     {
-        cout << "ModelView" << endl;
-        printGLMatrix(g_modelView[g_camera_chosen]);
-        cout << "Projection" << endl;
-        printGLMatrix(g_projection[g_camera_chosen]);
+        //cout << "ModelView" << endl;
+        //printGLMatrix(g_modelView[g_camera_chosen]);
+        //cout << "Projection" << endl;
+        //printGLMatrix(g_projection[g_camera_chosen]);
 
-        const Matrix4f& worldToCamMatrix = g_world_to_cam_matrix[g_camera_chosen];
-        const Matrix4f& perspIntrinsicMatrix = g_persp_intrinsic_matrix[g_camera_chosen];
+        //const Matrix4f& worldToCamMatrix = g_world_to_cam_matrix[g_camera_chosen];
+        //const Matrix4f& perspIntrinsicMatrix = g_persp_intrinsic_matrix[g_camera_chosen];
 
-        Vector4f world_location(-0.5f, 0.0f, 0.0f, 1.0f);
-        Vector4f cam_location = worldToCamMatrix * world_location;
-        cout << "Location in cam = " << cam_location / cam_location(3) << endl;
-        Vector4f img_location = perspIntrinsicMatrix * cam_location;
-        cout << "Location in img = " << img_location / img_location(3) << endl;
-        Vector2f viewport_location = Vector2f((img_location(0) / img_location(3))*320.0f / 1000.0f, (img_location(1) / img_location(3))*240.0f / 1000.0f);
-        cout << "Location in viewport should be = " << viewport_location << endl;
-        //drawEpipolarLineInOtherViewports();
+        //Vector4f world_location(-0.5f, 0.0f, 0.0f, 1.0f);
+        //Vector4f cam_location = worldToCamMatrix * world_location;
+        //cout << "Location in cam = " << cam_location / cam_location(3) << endl;
+        //Vector4f img_location = perspIntrinsicMatrix * cam_location;
+        //cout << "Location in img = " << img_location / img_location(3) << endl;
+        //Vector2f viewport_location = Vector2f((img_location(0) / img_location(3))*320.0f / 1000.0f, (img_location(1) / img_location(3))*240.0f / 1000.0f);
+        //cout << "Location in viewport should be = " << viewport_location << endl;
+        drawEpipolarLineInOtherViewports();
+    }
+
+    //Check for at least 2 cameras that have x,y values set
+    int countOfCamerasSet = 0;
+    for (int i = 0; i < NUM_CAMERAS; ++i)
+    {
+        countOfCamerasSet += g_triangulation_clicked_xybool_location[i][2];
+    }
+    cout << "Count of viewports clicked on = " << countOfCamerasSet << endl;
+    if (countOfCamerasSet > 1)
+    {
+        TriangulationData data[NUM_CAMERAS];
+        TriangulationResults results[NUM_CAMERAS];
+        for (int i = 0; i < NUM_CAMERAS; ++i)
+        {
+            if (g_triangulation_clicked_xybool_location[i][2] == 0)
+            {
+                data[i].use_for_triangulation = false;
+                continue;
+            }
+
+            Matrix3f perspIntrinsic_33 = g_persp_intrinsic_matrix_33[i];
+
+            //Do triangulation every time
+            Vector3f clickedPointInCalibImage = Vector3f((1000.0f / 320.0f)*g_triangulation_clicked_xybool_location[i][0], (1000.0f / 240.0f)*g_triangulation_clicked_xybool_location[i][1], 1.0f);
+            cout << "Projected point = " << clickedPointInCalibImage << endl;
+
+            data[i].use_for_triangulation = true;
+            data[i].x = clickedPointInCalibImage(0);
+            data[i].y = clickedPointInCalibImage(1);
+        }
+
+        Vector3f xyz;
+        float triangulationError = -1.0f;
+        Triangulate_LinearLeastSquares(g_world_to_cam_matrix, g_persp_intrinsic_matrix_33, data, xyz, triangulationError, results);
+
+        cout << "Result (XYZ): " << endl << xyz << endl;
+
+        drawReprojectedPointsInAllViewports(xyz);
     }
 
     glutSwapBuffers();

@@ -10,9 +10,6 @@ using namespace Eigen;
 
 struct TriangulationData
 {
-    float* Extrinsics; // of 16 length (4x4 - row major order)
-    float* Intrinsics; // of 9 length (3x3 - column major order)
-
     bool use_for_triangulation; // supports a mode where we just get triangulation results reprojected
     float x;
     float y;
@@ -37,9 +34,14 @@ void Triangulate_LinearLeastSquares(
 {
     //Unproject: Convert from image (x,y) -> w[u v 1]
     Vector3f unprojected_point[4];
+    int num_points = 0;
     for (int point_idx = 0; point_idx < 4; ++point_idx)
     {
-        //Map<Matrix3f> intrinsics(points[point_idx].Intrinsics);
+        if (!points[point_idx].use_for_triangulation)
+        {
+            continue;
+        }
+
         const Matrix3f& intrinsics = all_intrinsics[point_idx];
         cout << "Intrinsics: " << endl << intrinsics << endl;
 
@@ -49,26 +51,36 @@ void Triangulate_LinearLeastSquares(
         unprojected_point[point_idx] = unprojected_point[point_idx] / unprojected_point[point_idx](2);
 
         cout << "x = " << points[point_idx].x << ", y = " <<  points[point_idx].y << " unprojects to " << endl << unprojected_point[point_idx] << endl;
+
+        ++num_points;
     }
  
-    MatrixXf A_matrix(8, 4);
+    MatrixXf A_matrix(2*num_points, 4);
     //For each point, add 2 rows to A
     // A = [u.p3' - p1']
     //     [v.p3' - p2']
+    int row_id = 0;
     for (int point_idx = 0; point_idx < 4; ++point_idx)
     {
+        if (!points[point_idx].use_for_triangulation)
+        {
+            continue;
+        }
+
         const Matrix4f& extrinsics = all_extrinsics[point_idx];
         cout << "Extrinsics: " << endl << extrinsics << endl;
 
-        A_matrix(2*point_idx, 0) = unprojected_point[point_idx](0) * extrinsics(2, 0) - extrinsics(0, 0);
-        A_matrix(2*point_idx, 1) = unprojected_point[point_idx](0) * extrinsics(2, 1) - extrinsics(0, 1);
-        A_matrix(2*point_idx, 2) = unprojected_point[point_idx](0) * extrinsics(2, 2) - extrinsics(0, 2);
-        A_matrix(2*point_idx, 3) = unprojected_point[point_idx](0) * extrinsics(2, 3) - extrinsics(0, 3);
+        A_matrix(2* row_id, 0) = unprojected_point[point_idx](0) * extrinsics(2, 0) - extrinsics(0, 0);
+        A_matrix(2* row_id, 1) = unprojected_point[point_idx](0) * extrinsics(2, 1) - extrinsics(0, 1);
+        A_matrix(2* row_id, 2) = unprojected_point[point_idx](0) * extrinsics(2, 2) - extrinsics(0, 2);
+        A_matrix(2* row_id, 3) = unprojected_point[point_idx](0) * extrinsics(2, 3) - extrinsics(0, 3);
 
-        A_matrix(2*point_idx + 1, 0) = unprojected_point[point_idx](1) * extrinsics(2, 0) - extrinsics(1, 0);
-        A_matrix(2*point_idx + 1, 1) = unprojected_point[point_idx](1) * extrinsics(2, 1) - extrinsics(1, 1);
-        A_matrix(2*point_idx + 1, 2) = unprojected_point[point_idx](1) * extrinsics(2, 2) - extrinsics(1, 2);
-        A_matrix(2*point_idx + 1, 3) = unprojected_point[point_idx](1) * extrinsics(2, 3) - extrinsics(1, 3);
+        A_matrix(2* row_id + 1, 0) = unprojected_point[point_idx](1) * extrinsics(2, 0) - extrinsics(1, 0);
+        A_matrix(2* row_id + 1, 1) = unprojected_point[point_idx](1) * extrinsics(2, 1) - extrinsics(1, 1);
+        A_matrix(2* row_id + 1, 2) = unprojected_point[point_idx](1) * extrinsics(2, 2) - extrinsics(1, 2);
+        A_matrix(2* row_id + 1, 3) = unprojected_point[point_idx](1) * extrinsics(2, 3) - extrinsics(1, 3);
+
+        ++row_id;
     }
     cout << "Final A: " << endl << A_matrix << endl;
 
@@ -87,7 +99,7 @@ void Triangulate_LinearLeastSquares(
     triangulation_error = 0.0f;
 }
 
-//Minimize geometric error
+//Minimize geometric 2d error
 void Triangulate_NonLinearLeastSquares(
     const TriangulationData points[4],
     Vector3f& xyz,
